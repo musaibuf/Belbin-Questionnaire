@@ -1,52 +1,47 @@
+require('dotenv').config(); 
 const express = require('express');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 const cors = require('cors');
 
-// --- Direct Authentication Setup ---
-// Load credentials from the JSON file
-const creds = require('./credentials.json'); 
-
 const app = express();
-app.use(cors()); // Allow requests from your frontend
+app.use(cors());
 app.use(express.json());
 
-// Initialize the JWT client using the credentials file
+// --- Production-Ready Authentication ---
+// This will read the credentials from environment variables
 const serviceAccountAuth = new JWT({
-  email: creds.client_email,
-  key: creds.private_key,
+  email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+  key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'), // Important for formatting the key correctly
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
-// Initialize the GoogleSpreadsheet object with the sheet ID and auth client
-const doc = new GoogleSpreadsheet('1aUSFbuo-AKVAW8hi62pv59L9PUTc-hjxPFRQ0YJ-AGE', serviceAccountAuth);
+const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, serviceAccountAuth);
 
-// Function to test connection and load sheet info
+// Function to test connection
 async function initializeSheet() {
     try {
-        await doc.loadInfo(); // loads document properties and worksheets
+        await doc.loadInfo();
         console.log(`Connected to sheet: ${doc.title}`);
     } catch (error) {
-        console.error('Failed to connect to Google Sheets:', error);
+        console.error('Failed to connect to Google Sheets:', error.message);
     }
 }
 
 initializeSheet();
 
-// API endpoint to receive data
+// API endpoint
 app.post('/submit-belbin', async (req, res) => {
     try {
         const { name, organization, responses } = req.body;
-        const sheet = doc.sheetsByIndex[0]; // Assumes you're writing to the first sheet
+        const sheet = doc.sheetsByIndex[0];
 
-        // Prepare the row data
         const newRow = {
             Timestamp: new Date().toLocaleString(),
             Name: name,
             Organization: organization,
         };
 
-        // Add each question's score as a new column
         for (const sectionId in responses) {
             for (const questionId in responses[sectionId]) {
                 newRow[`${questionId}_Score`] = responses[sectionId][questionId] || 0;
