@@ -287,8 +287,8 @@ function App() {
     };
 
     try {
-      // await axios.post('http://localhost:3001/submit-belbin', payload);
-      console.log("Results submitted (simulation):", payload);
+      await axios.post('https://belbin-backend-app.onrender.com/submit-belbin', payload);
+      console.log("Results submitted", payload);
     } catch (error) {
       console.error("Failed to submit results:", error);
     }
