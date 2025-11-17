@@ -2,7 +2,8 @@ const express = require('express');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 const cors = require('cors');
-const path = require('path'); // Use the 'path' module for robust file paths
+const path = require('path');
+require('dotenv').config();
 
 const app = express();
 app.use(cors());
@@ -10,7 +11,6 @@ app.use(express.json());
 
 // --- The Correct, Robust Credential Loading Method ---
 const secretDir = process.env.RENDER_SECRETS_DIR;
-
 // If RENDER_SECRETS_DIR exists, we are on Render. Otherwise, we are local.
 const credentialsPath = secretDir
   ? path.join(secretDir, 'credentials.json') // On Render
@@ -46,19 +46,19 @@ app.post('/submit-belbin', async (req, res) => {
     try {
         const { name, organization, responses } = req.body;
         const sheet = doc.sheetsByIndex[0];
-
+        
         const newRow = {
             Timestamp: new Date().toLocaleString(),
             Name: name,
             Organization: organization,
         };
-
+        
         for (const sectionId in responses) {
             for (const questionId in responses[sectionId]) {
                 newRow[`${questionId}_Score`] = responses[sectionId][questionId] || 0;
             }
         }
-
+        
         await sheet.addRow(newRow);
         res.status(200).send('Data submitted successfully!');
     } catch (error) {
