@@ -2,20 +2,21 @@ const express = require('express');
 const { GoogleSpreadsheet } = require('google-spreadsheet');
 const { JWT } = require('google-auth-library');
 const cors = require('cors');
-const fs = require('fs'); // We need the 'fs' module to check if a file exists
+const path = require('path'); // Use the 'path' module for robust file paths
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- Smart Credential Loading ---
-// Render places secret files at '/etc/secrets/'. We check if that file exists.
-const RENDER_SECRET_PATH = '/etc/secrets/credentials.json';
-const LOCAL_SECRET_PATH = './credentials.json';
+// --- The Correct, Robust Credential Loading Method ---
+const secretDir = process.env.RENDER_SECRETS_DIR;
 
-// Determine which path to use
-const credentialsPath = fs.existsSync(RENDER_SECRET_PATH) ? RENDER_SECRET_PATH : LOCAL_SECRET_PATH;
-console.log(`Loading credentials from: ${credentialsPath}`);
+// If RENDER_SECRETS_DIR exists, we are on Render. Otherwise, we are local.
+const credentialsPath = secretDir
+  ? path.join(secretDir, 'credentials.json') // On Render
+  : './credentials.json';                   // Locally
+
+console.log(`Attempting to load credentials from: ${credentialsPath}`);
 const creds = require(credentialsPath);
 
 // Initialize the JWT client using the loaded credentials
@@ -25,7 +26,8 @@ const serviceAccountAuth = new JWT({
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
-const doc = new GoogleSpreadsheet(creds.sheet_id || process.env.GOOGLE_SHEET_ID, serviceAccountAuth);
+// IMPORTANT: We will use a separate environment variable for the Sheet ID.
+const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID, serviceAccountAuth);
 
 // Function to test connection
 async function initializeSheet() {
